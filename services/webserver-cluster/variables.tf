@@ -42,3 +42,12 @@ variable "max_size" {
   description = "The maximum number of EC2 Instances in the ASG"
   type        = number
 }
+
+variable "ami" {
+  description = "The AMI to run in the cluster"
+  type        = string
+}
+variable "server_text" {
+  description = "The text the web server should return"
+  type        = string
+}

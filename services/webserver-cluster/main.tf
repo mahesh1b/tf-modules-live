@@ -21,12 +21,13 @@ data "terraform_remote_state" "db" {
 
 
 resource "aws_launch_configuration" "example" {
-  image_id        = "ami-0c7217cdde317cfec"
+  image_id        = var.ami
   instance_type   = var.instance_type
   security_groups = [aws_security_group.instance.id]
-  #user_data       = file("init.sh")
+
   # Render the User Data script as a template
   user_data = templatefile("${path.module}/init.sh", {
+    server_text = var.server_text
     server_port = var.port
     db_address  = data.terraform_remote_state.db.outputs.address
     db_port     = data.terraform_remote_state.db.outputs.port
@@ -36,6 +37,10 @@ resource "aws_launch_configuration" "example" {
 
 
 resource "aws_autoscaling_group" "example" {
+  # Explicitly depend on the launch configuration's name so eachtime it's
+  # replaced, this ASG is also replaced
+  #name = "${var.cluster_name}-${aws_launch_configuration.example.name}"
+
   launch_configuration = aws_launch_configuration.example.name
   vpc_zone_identifier  = data.aws_subnets.default.ids
   target_group_arns    = [aws_lb_target_group.asg.arn]
@@ -44,11 +49,17 @@ resource "aws_autoscaling_group" "example" {
 
   min_size = var.min_size
   max_size = var.max_size
+
+  # considering the ASG deployment complete
+  #min_elb_capacity = var.min_size
   tag {
     key                 = "Name"
     value               = "${var.cluster_name}-asg"
     propagate_at_launch = true
   }
+  # lifecycle {
+  #   create_before_destroy = true
+  # }
 }
 
 resource "aws_lb" "example" {
